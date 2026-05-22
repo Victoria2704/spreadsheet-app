@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import spreadsheetReducer from './spreadsheetSlice'
+import spreadsheetReducer from '@/store/spreadsheetSlice'
 
 export const store = configureStore({
   reducer: {

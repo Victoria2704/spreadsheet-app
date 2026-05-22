@@ -1,11 +1,17 @@
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from 'react'
 import {
   getCellId,
   getCellText,
   getCellType,
   getColumnName,
-} from './tableHelpers'
-import { useAppDispatch, useAppSelector } from './store/hooks'
+} from '@/tableHelpers'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   setActiveCell,
   setSelectedRange,
@@ -16,12 +22,14 @@ import {
   deleteRow as deleteRowAction,
   addColumn as addColumnAction,
   deleteColumn as deleteColumnAction,
-} from './store/spreadsheetSlice'
-import type { CellPosition, ContextMenu } from './types'
-import './index.css'
+} from '@/store/spreadsheetSlice'
+import type { CellPosition, ContextMenu } from '@/types'
+import '@/index.css'
 
 const DEFAULT_COLUMN_WIDTH = 100
 const DEFAULT_ROW_HEIGHT = 28
+const HEADER_HEIGHT = 32
+const ROWS_BUFFER = 6
 
 function App() {
   const dispatch = useAppDispatch()
@@ -38,21 +46,84 @@ function App() {
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [tableHeight, setTableHeight] = useState(600)
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null)
 
-  // Считаем точную ширину таблицы, чтобы при изменении размера колонок ничего не ломалось
-  let totalWidth = 50
-  for (let i = 0; i < columnsCount; i++) {
-    totalWidth += columnWidths[i] ?? DEFAULT_COLUMN_WIDTH
-  }
-  
-  const columns = Array.from({ length: columnsCount }, (_, index) => getColumnName(index))
+  const totalWidth = useMemo(() => {
+    let width = 50
+
+    for (let i = 0; i < columnsCount; i++) {
+      width += columnWidths[i] ?? DEFAULT_COLUMN_WIDTH
+    }
+
+    return width
+  }, [columnsCount, columnWidths])
+
+  const columns = useMemo(
+    () =>
+      Array.from({ length: columnsCount }, (_, index) => getColumnName(index)),
+    [columnsCount],
+  )
+
+  const { rowsHeight, rowTops } = useMemo(() => {
+    let height = 0
+    const tops: Record<number, number> = {}
+
+    for (let row = 1; row <= rowsCount; row++) {
+      tops[row] = height
+      height += rowHeights[row] ?? DEFAULT_ROW_HEIGHT
+    }
+
+    return { rowsHeight: height, rowTops: tops }
+  }, [rowsCount, rowHeights])
+
+  const { visibleRows, topSpace } = useMemo(() => {
+    const bodyScrollTop = Math.max(0, scrollTop - HEADER_HEIGHT)
+    let firstRow = 1
+
+    while (
+      firstRow < rowsCount &&
+      rowTops[firstRow] + (rowHeights[firstRow] ?? DEFAULT_ROW_HEIGHT) <
+        bodyScrollTop
+    ) {
+      firstRow += 1
+    }
+
+    firstRow = Math.max(1, firstRow - ROWS_BUFFER)
+
+    let lastRow = firstRow
+
+    while (
+      lastRow < rowsCount &&
+      rowTops[lastRow] < bodyScrollTop + tableHeight
+    ) {
+      lastRow += 1
+    }
+
+    lastRow = Math.min(rowsCount, lastRow + ROWS_BUFFER)
+
+    return {
+      visibleRows: Array.from(
+        { length: lastRow - firstRow + 1 },
+        (_, index) => firstRow + index,
+      ),
+      topSpace: rowTops[firstRow] ?? 0,
+    }
+  }, [rowsCount, rowTops, scrollTop, tableHeight, rowHeights])
 
   function isCellSelected(r: number, c: number) {
     if (!selectedRange) return false
     const startRow = Math.min(selectedRange.start.row, selectedRange.end.row)
     const endRow = Math.max(selectedRange.start.row, selectedRange.end.row)
-    const startCol = Math.min(selectedRange.start.column, selectedRange.end.column)
-    const endCol = Math.max(selectedRange.start.column, selectedRange.end.column)
+    const startCol = Math.min(
+      selectedRange.start.column,
+      selectedRange.end.column,
+    )
+    const endCol = Math.max(
+      selectedRange.start.column,
+      selectedRange.end.column,
+    )
     return r >= startRow && r <= endRow && c >= startCol && c <= endCol
   }
 
@@ -93,6 +164,12 @@ function App() {
 
     return () => {
       window.removeEventListener('click', closeContextMenu)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (tableWrapperRef.current) {
+      setTableHeight(tableWrapperRef.current.clientHeight)
     }
   }, [])
 
@@ -170,16 +247,22 @@ function App() {
     window.addEventListener('mouseup', stopResize)
   }
 
-  function openContextMenu(event: ReactMouseEvent, row: number, column: number) {
+  function openContextMenu(
+    event: ReactMouseEvent,
+    row: number,
+    column: number,
+  ) {
     event.preventDefault()
 
     const clickedCell = { row, column }
 
     dispatch(setActiveCell(clickedCell))
-    dispatch(setSelectedRange({
-      start: clickedCell,
-      end: clickedCell,
-    }))
+    dispatch(
+      setSelectedRange({
+        start: clickedCell,
+        end: clickedCell,
+      }),
+    )
     setContextMenu({
       x: event.clientX,
       y: event.clientY,
@@ -228,18 +311,22 @@ function App() {
     const clickedCell = { row, column }
 
     if (shiftKey && activeCell) {
-      dispatch(setSelectedRange({
-        start: activeCell,
-        end: clickedCell,
-      }))
+      dispatch(
+        setSelectedRange({
+          start: activeCell,
+          end: clickedCell,
+        }),
+      )
       return
     }
 
     dispatch(setActiveCell(clickedCell))
-    dispatch(setSelectedRange({
-      start: clickedCell,
-      end: clickedCell,
-    }))
+    dispatch(
+      setSelectedRange({
+        start: clickedCell,
+        end: clickedCell,
+      }),
+    )
   }
 
   function startEditing(row: number, column: number) {
@@ -247,10 +334,12 @@ function App() {
     const clickedCell = { row, column }
 
     dispatch(setActiveCell(clickedCell))
-    dispatch(setSelectedRange({
-      start: clickedCell,
-      end: clickedCell,
-    }))
+    dispatch(
+      setSelectedRange({
+        start: clickedCell,
+        end: clickedCell,
+      }),
+    )
     setEditingCell(clickedCell)
     setEditingValue(cellValues[cellId]?.value ?? '')
   }
@@ -269,7 +358,7 @@ function App() {
           value: newValue,
           type: getCellType(newValue),
         },
-      })
+      }),
     )
     setEditingCell(null)
     setEditingValue('')
@@ -309,17 +398,33 @@ function App() {
           <button type="button" onClick={() => addColumn(contextMenu.column)}>
             Вставить столбец
           </button>
-          <button type="button" onClick={() => deleteColumn(contextMenu.column)}>
+          <button
+            type="button"
+            onClick={() => deleteColumn(contextMenu.column)}
+          >
             Удалить столбец
           </button>
         </div>
       )}
 
-      <div className="table-wrapper">
+      <div
+        ref={tableWrapperRef}
+        className="table-wrapper"
+        onScroll={(event) => {
+          setScrollTop(event.currentTarget.scrollTop)
+          setTableHeight(event.currentTarget.clientHeight)
+        }}
+      >
         <div className="spreadsheet" style={{ minWidth: totalWidth }}>
           {/* Шапка с колонками (A, B, C...) */}
-          <div className="table-row" style={{ display: 'flex', width: totalWidth }}>
-            <div className="corner-cell" style={{ width: 50, minWidth: 50, flexShrink: 0 }}></div>
+          <div
+            className="table-row"
+            style={{ display: 'flex', width: totalWidth }}
+          >
+            <div
+              className="corner-cell"
+              style={{ width: 50, minWidth: 50, flexShrink: 0 }}
+            ></div>
             {columns.map((column, columnIndex) => (
               <div
                 key={column}
@@ -329,7 +434,9 @@ function App() {
                   minWidth: getColumnWidth(columnIndex),
                   flexShrink: 0,
                 }}
-                onContextMenu={(event) => openContextMenu(event, 1, columnIndex)}
+                onContextMenu={(event) =>
+                  openContextMenu(event, 1, columnIndex)
+                }
               >
                 {column}
                 <span
@@ -340,75 +447,94 @@ function App() {
             ))}
           </div>
 
-          {/* Тело таблицы */}
-          {Array.from({ length: rowsCount }).map((_, rowIndex) => {
-            const row = rowIndex + 1
-            return (
-              <div key={row} className="table-row" style={{ display: 'flex', width: totalWidth }}>
+          {/* Тело таблицы. Рисуем только видимые строки, а не все 1000 сразу */}
+          <div
+            style={{
+              height: rowsHeight,
+              position: 'relative',
+              width: totalWidth,
+            }}
+          >
+            <div style={{ transform: `translateY(${topSpace}px)` }}>
+              {visibleRows.map((row) => (
                 <div
-                  className="row-header"
-                  style={{
-                    width: 50,
-                    minWidth: 50,
-                    height: getRowHeight(row),
-                    flexShrink: 0,
-                  }}
-                  onContextMenu={(event) => openContextMenu(event, row, 0)}
+                  key={row}
+                  className="table-row"
+                  style={{ display: 'flex', width: totalWidth }}
                 >
-                  {row}
-                  <span
-                    className="row-resizer"
-                    onMouseDown={(event) => startRowResize(event, row)}
-                  ></span>
+                  <div
+                    className="row-header"
+                    style={{
+                      width: 50,
+                      minWidth: 50,
+                      height: getRowHeight(row),
+                      flexShrink: 0,
+                    }}
+                    onContextMenu={(event) => openContextMenu(event, row, 0)}
+                  >
+                    {row}
+                    <span
+                      className="row-resizer"
+                      onMouseDown={(event) => startRowResize(event, row)}
+                    ></span>
+                  </div>
+                  {columns.map((column, columnIndex) => {
+                    const cellId = getCellId(row, columnIndex)
+                    const cellData = cellValues[cellId]
+                    return (
+                      <div
+                        key={`${column}${row}`}
+                        className={`cell ${isCellSelected(row, columnIndex) ? 'selected-cell' : ''} ${
+                          isActiveCell(row, columnIndex) ? 'active-cell' : ''
+                        } ${cellData ? `cell-${cellData.type}` : ''}`}
+                        style={{
+                          width: getColumnWidth(columnIndex),
+                          minWidth: getColumnWidth(columnIndex),
+                          height: getRowHeight(row),
+                          flexShrink: 0,
+                        }}
+                        onClick={(event) =>
+                          handleCellClick(row, columnIndex, event.shiftKey)
+                        }
+                        onContextMenu={(event) =>
+                          openContextMenu(event, row, columnIndex)
+                        }
+                        onDoubleClick={() => startEditing(row, columnIndex)}
+                      >
+                        {isEditingCell(row, columnIndex) ? (
+                          <input
+                            autoFocus
+                            className="cell-input"
+                            value={editingValue}
+                            onBlur={(event) => saveEditing(event.target.value)}
+                            onChange={(event) =>
+                              setEditingValue(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                saveEditing(event.currentTarget.value)
+                              }
+                              if (event.key === 'Escape') {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                cancelEditing()
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span className="cell-text">
+                            {getCellText(cellData, cellValues)}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                {columns.map((column, columnIndex) => {
-                  const cellId = getCellId(row, columnIndex)
-                  const cellData = cellValues[cellId]
-                  return (
-                    <div
-                      key={`${column}${row}`}
-                      className={`cell ${isCellSelected(row, columnIndex) ? 'selected-cell' : ''} ${
-                        isActiveCell(row, columnIndex) ? 'active-cell' : ''
-                      } ${cellData ? `cell-${cellData.type}` : ''}`}
-                      style={{
-                        width: getColumnWidth(columnIndex),
-                        minWidth: getColumnWidth(columnIndex),
-                        height: getRowHeight(row),
-                        flexShrink: 0,
-                      }}
-                      onClick={(event) => handleCellClick(row, columnIndex, event.shiftKey)}
-                      onContextMenu={(event) => openContextMenu(event, row, columnIndex)}
-                      onDoubleClick={() => startEditing(row, columnIndex)}
-                    >
-                      {isEditingCell(row, columnIndex) ? (
-                        <input
-                          autoFocus
-                          className="cell-input"
-                          value={editingValue}
-                          onBlur={(event) => saveEditing(event.target.value)}
-                          onChange={(event) => setEditingValue(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              saveEditing(event.currentTarget.value)
-                            }
-                            if (event.key === 'Escape') {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              cancelEditing()
-                            }
-                          }}
-                        />
-                      ) : (
-                        <span className="cell-text">{getCellText(cellData, cellValues)}</span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </main>

@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
-import type { CellData, CellPosition, SelectedRange } from '../types'
+import type { CellData, CellPosition, SelectedRange } from '@/types'
 import {
   addColumnToCells,
   addIndexToObject,
@@ -7,7 +7,7 @@ import {
   deleteColumnFromCells,
   deleteIndexFromObject,
   deleteRowFromCells,
-} from '../tableHelpers'
+} from '@/tableHelpers'
 
 export interface SpreadsheetState {
   rowsCount: number
@@ -20,7 +20,7 @@ export interface SpreadsheetState {
 }
 
 const initialState: SpreadsheetState = {
-  rowsCount: 100,
+  rowsCount: 1000,
   columnsCount: 26,
   activeCell: null,
   selectedRange: null,
@@ -68,7 +68,10 @@ export const spreadsheetSlice = createSlice({
     deleteRow: (state, action: PayloadAction<number>) => {
       if (state.rowsCount > 1) {
         state.cellValues = deleteRowFromCells(state.cellValues, action.payload)
-        state.rowHeights = deleteIndexFromObject(state.rowHeights, action.payload)
+        state.rowHeights = deleteIndexFromObject(
+          state.rowHeights,
+          action.payload,
+        )
         state.rowsCount -= 1
       }
     },
@@ -79,8 +82,14 @@ export const spreadsheetSlice = createSlice({
     },
     deleteColumn: (state, action: PayloadAction<number>) => {
       if (state.columnsCount > 1) {
-        state.cellValues = deleteColumnFromCells(state.cellValues, action.payload)
-        state.columnWidths = deleteIndexFromObject(state.columnWidths, action.payload)
+        state.cellValues = deleteColumnFromCells(
+          state.cellValues,
+          action.payload,
+        )
+        state.columnWidths = deleteIndexFromObject(
+          state.columnWidths,
+          action.payload,
+        )
         state.columnsCount -= 1
       }
     },

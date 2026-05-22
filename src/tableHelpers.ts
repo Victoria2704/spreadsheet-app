@@ -1,4 +1,4 @@
-import type { CellData, CellType } from './types'
+import type { CellData, CellType } from '@/types'
 
 export function getCellId(row: number, column: number) {
   return `${row}-${column}`
@@ -85,12 +85,22 @@ export function calculateFormula(
     const end = getCellPosition(endCell)
     const numbers = []
 
-    for (let row = Math.min(start.row, end.row); row <= Math.max(start.row, end.row); row += 1) {
-      for (let column = Math.min(start.column, end.column); column <= Math.max(start.column, end.column); column += 1) {
+    for (
+      let row = Math.min(start.row, end.row);
+      row <= Math.max(start.row, end.row);
+      row += 1
+    ) {
+      for (
+        let column = Math.min(start.column, end.column);
+        column <= Math.max(start.column, end.column);
+        column += 1
+      ) {
         const cellData = cellValues[getCellId(row, column)]
 
         if (cellData?.type === 'formula') {
-          numbers.push(Number(calculateFormula(cellData.value, cellValues)) || 0)
+          numbers.push(
+            Number(calculateFormula(cellData.value, cellValues)) || 0,
+          )
         } else {
           numbers.push(Number(cellData?.value) || 0)
         }
@@ -109,9 +119,7 @@ export function calculateFormula(
     return String(sum)
   }
 
-  const averageFormula = formula.match(
-    /^AVERAGE\(([A-Z]+\d+):([A-Z]+\d+)\)$/,
-  )
+  const averageFormula = formula.match(/^AVERAGE\(([A-Z]+\d+):([A-Z]+\d+)\)$/)
 
   if (averageFormula) {
     const numbers = getRangeNumbers(averageFormula[1], averageFormula[2])
