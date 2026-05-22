@@ -1,0 +1,181 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  color: #202124;
+}
+
+.app {
+  padding: 20px;
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 24px;
+}
+
+.formula-panel {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.active-cell-name {
+  width: 70px;
+  height: 32px;
+  padding: 6px;
+  border: 1px solid #c9d1d9;
+  background: white;
+  text-align: center;
+}
+
+.formula-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #c9d1d9;
+  font: inherit;
+  background: white;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 10;
+  width: 160px;
+  padding: 4px;
+  border: 1px solid #c9d1d9;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  background: white;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.context-menu button:hover {
+  background: #eef2f6;
+}
+
+.table-wrapper {
+  max-width: 100%;
+  height: 80vh;
+  overflow: auto;
+  border: 1px solid #c9d1d9;
+  background: white;
+}
+
+.corner-cell,
+.column-header,
+.row-header,
+.cell {
+  border-right: 1px solid #d0d7de;
+  border-bottom: 1px solid #d0d7de;
+}
+
+.corner-cell,
+.column-header,
+.row-header {
+  background: #eef2f6;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+}
+
+.corner-cell {
+  width: 48px;
+  min-width: 48px;
+  height: 32px;
+}
+
+.column-header {
+  width: 100px;
+  min-width: 100px;
+  height: 32px;
+}
+
+.row-header {
+  width: 48px;
+  min-width: 48px;
+  height: 28px;
+}
+
+.cell {
+  width: 100px;
+  min-width: 100px;
+  height: 28px;
+  background: white;
+  cursor: cell;
+  padding: 0;
+}
+
+.selected-cell {
+  background: #dbeafe;
+}
+
+.active-cell {
+  outline: 2px solid #1a73e8;
+  outline-offset: -2px;
+}
+
+.cell-text {
+  display: block;
+  height: 100%;
+  padding: 5px 6px;
+  white-space: nowrap;
+}
+
+.cell-input {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0 6px;
+  font: inherit;
+}
+
+.column-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.row-resizer {
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 100%;
+  height: 6px;
+  cursor: row-resize;
+}
+
+.cell-number .cell-text {
+  text-align: right;
+}
+
+.cell-boolean .cell-text {
+  text-align: center;
+  color: #8a5b00;
+  font-weight: 600;
+}
+
+.cell-formula .cell-text {
+  color: #0f7b42;
+}
