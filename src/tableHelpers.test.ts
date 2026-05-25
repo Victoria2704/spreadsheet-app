@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { calculateFormula, getCellText, getCellType } from '@/tableHelpers'
+import {
+  calculateFormula,
+  getCellText,
+  getCellType,
+  parseCsvText,
+  serializeCellsToCsv,
+} from '@/tableHelpers'
 import type { CellData } from '@/types'
 
 describe('tableHelpers', () => {
@@ -38,5 +44,21 @@ describe('tableHelpers', () => {
     }
 
     expect(getCellText(cells['1-1'], cells)).toBe('4')
+  })
+
+  it('сериализует и читает CSV', () => {
+    const cells: Record<string, CellData> = {
+      '1-0': { value: 'Hello, world', type: 'string' },
+      '1-1': { value: '5', type: 'number' },
+      '2-0': { value: '=A1+B1', type: 'formula' },
+    }
+
+    const csv = serializeCellsToCsv(cells, 2, 2)
+    const rows = parseCsvText(csv)
+
+    expect(rows).toEqual([
+      ['Hello, world', '5'],
+      ['=A1+B1', ''],
+    ])
   })
 })

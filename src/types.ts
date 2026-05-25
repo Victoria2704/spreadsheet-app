@@ -21,3 +21,15 @@ export type ContextMenu = {
   row: number
   column: number
 }
+
+export type DocumentMeta = {
+  id: string
+  ownerId: string
+  title: string
+  createdAt: string
+  updatedAt: string
+  rowsCount: number
+  columnsCount: number
+  preview: string[][]
+  cells: Record<string, CellData>
+}

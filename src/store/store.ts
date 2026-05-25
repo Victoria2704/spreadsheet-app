@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit'
 import spreadsheetReducer from '@/store/spreadsheetSlice'
+import documentsReducer from '@/store/documentsSlice'
 
 export const store = configureStore({
   reducer: {
     spreadsheet: spreadsheetReducer,
+    documents: documentsReducer,
   },
 })
 

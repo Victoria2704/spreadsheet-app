@@ -40,6 +40,132 @@ export function getCellType(value: string): CellType {
   return 'string'
 }
 
+function escapeCsvCell(value: string) {
+  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+    return `"${value.replaceAll('"', '""')}"`
+  }
+
+  return value
+}
+
+function detectCsvDelimiter(text: string) {
+  const sample = text.split('\n').slice(0, 5).join('\n')
+  const delimiters = [',', ';', '\t']
+  let bestDelimiter = ','
+  let bestCount = -1
+
+  for (const delimiter of delimiters) {
+    let count = 0
+    let inQuotes = false
+
+    for (let index = 0; index < sample.length; index += 1) {
+      const char = sample[index]
+
+      if (char === '"') {
+        if (inQuotes && sample[index + 1] === '"') {
+          index += 1
+          continue
+        }
+
+        inQuotes = !inQuotes
+        continue
+      }
+
+      if (!inQuotes && char === delimiter) {
+        count += 1
+      }
+    }
+
+    if (count > bestCount) {
+      bestCount = count
+      bestDelimiter = delimiter
+    }
+  }
+
+  return bestDelimiter
+}
+
+export function serializeCellsToCsv(
+  cellValues: Record<string, CellData>,
+  rowsCount: number,
+  columnsCount: number,
+) {
+  const rows: string[] = []
+
+  for (let row = 1; row <= rowsCount; row += 1) {
+    const values: string[] = []
+
+    for (let column = 0; column < columnsCount; column += 1) {
+      const cell = cellValues[getCellId(row, column)]
+      values.push(escapeCsvCell(cell?.value ?? ''))
+    }
+
+    rows.push(values.join(','))
+  }
+
+  return `\ufeff${rows.join('\r\n')}`
+}
+
+export function parseCsvText(text: string) {
+  const normalizedText = text
+    .replace(/^\ufeff/, '')
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\r', '\n')
+  const delimiter = detectCsvDelimiter(normalizedText)
+  const rows: string[][] = []
+  let currentRow: string[] = []
+  let currentValue = ''
+  let inQuotes = false
+
+  for (let index = 0; index < normalizedText.length; index += 1) {
+    const char = normalizedText[index]
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (normalizedText[index + 1] === '"') {
+          currentValue += '"'
+          index += 1
+        } else {
+          inQuotes = false
+        }
+      } else {
+        currentValue += char
+      }
+
+      continue
+    }
+
+    if (char === '"') {
+      inQuotes = true
+      continue
+    }
+
+    if (char === delimiter) {
+      currentRow.push(currentValue)
+      currentValue = ''
+      continue
+    }
+
+    if (char === '\n') {
+      currentRow.push(currentValue)
+      rows.push(currentRow)
+      currentRow = []
+      currentValue = ''
+      continue
+    }
+
+    currentValue += char
+  }
+
+  currentRow.push(currentValue)
+
+  if (currentRow.length > 1 || currentRow[0] !== '' || rows.length === 0) {
+    rows.push(currentRow)
+  }
+
+  return rows
+}
+
 function getCellPosition(cellName: string) {
   const result = cellName.match(/^([A-Z]+)(\d+)$/)
 

@@ -33,6 +33,22 @@ export const spreadsheetSlice = createSlice({
   name: 'spreadsheet',
   initialState,
   reducers: {
+    loadDocument: (
+      state,
+      action: PayloadAction<{
+        rowsCount: number
+        columnsCount: number
+        cellValues: Record<string, CellData>
+      }>,
+    ) => {
+      state.rowsCount = action.payload.rowsCount
+      state.columnsCount = action.payload.columnsCount
+      state.cellValues = action.payload.cellValues
+      state.activeCell = null
+      state.selectedRange = null
+      state.columnWidths = {}
+      state.rowHeights = {}
+    },
     setActiveCell: (state, action: PayloadAction<CellPosition | null>) => {
       state.activeCell = action.payload
     },
@@ -97,6 +113,7 @@ export const spreadsheetSlice = createSlice({
 })
 
 export const {
+  loadDocument,
   setActiveCell,
   setSelectedRange,
   setCellValue,
