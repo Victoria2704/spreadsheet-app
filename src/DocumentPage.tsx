@@ -54,6 +54,9 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     rowHeights,
   } = useAppSelector((state) => state.spreadsheet)
   const saveStatus = useAppSelector((state) => state.ui.saveStatus)
+  const saveStatusWasShown = useAppSelector(
+    (state) => state.ui.saveStatusWasShown,
+  )
   const hasUnsavedChanges = useAppSelector(
     (state) => state.ui.hasUnsavedChanges,
   )
@@ -540,18 +543,19 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     <main className="document-page">
       <header className="document-topbar">
         <div>
-          <p className="dashboard-label">Документ</p>
           <h1 className="document-page-title">{document.title}</h1>
         </div>
 
         <div className="document-topbar-actions">
-          <span className="save-status">
-            {saveStatus === 'saving'
-              ? 'Сохранение...'
-              : saveStatus === 'error'
-                ? 'Ошибка сохранения'
-                : 'Сохранено'}
-          </span>
+          {saveStatusWasShown && (
+            <span className="save-status">
+              {saveStatus === 'saving'
+                ? 'Сохранение...'
+                : saveStatus === 'error'
+                  ? 'Ошибка сохранения'
+                  : 'Сохранено'}
+            </span>
+          )}
           <button
             type="button"
             className="secondary-button"

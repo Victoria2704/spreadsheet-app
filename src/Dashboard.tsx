@@ -195,13 +195,9 @@ function Dashboard() {
     <main className="dashboard-page">
       <header className="dashboard-header">
         <div>
-          <p className="dashboard-label">Мои документы</p>
           <h1 className="dashboard-title">Таблицы</h1>
         </div>
         <div className="dashboard-actions">
-          <p className="dashboard-note">
-            Здесь пока просто список документов с датами и маленьким превью.
-          </p>
           <div className="dashboard-buttons">
             <button
               type="button"

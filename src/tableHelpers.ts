@@ -40,8 +40,14 @@ export function getCellType(value: string): CellType {
   return 'string'
 }
 
+const CSV_DELIMITER = ';'
+
 function escapeCsvCell(value: string) {
-  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+  if (
+    value.includes('"') ||
+    value.includes(CSV_DELIMITER) ||
+    value.includes('\n')
+  ) {
     return `"${value.replaceAll('"', '""')}"`
   }
 
@@ -100,7 +106,7 @@ export function serializeCellsToCsv(
       values.push(escapeCsvCell(cell?.value ?? ''))
     }
 
-    rows.push(values.join(','))
+    rows.push(values.join(CSV_DELIMITER))
   }
 
   return `\ufeff${rows.join('\r\n')}`

@@ -20,6 +20,7 @@ describe('uiSlice', () => {
     let state = uiReducer(undefined, setSaveStatus('saving'))
 
     expect(state.saveStatus).toBe('saving')
+    expect(state.saveStatusWasShown).toBe(true)
 
     state = uiReducer(state, setHasUnsavedChanges(true))
     expect(state.hasUnsavedChanges).toBe(true)

@@ -5,6 +5,7 @@ import type { SaveStatus } from '@/types'
 export type UiState = {
   isCreateModalOpen: boolean
   saveStatus: SaveStatus
+  saveStatusWasShown: boolean
   hasUnsavedChanges: boolean
   notification: string | null
 }
@@ -12,6 +13,7 @@ export type UiState = {
 const initialState: UiState = {
   isCreateModalOpen: false,
   saveStatus: 'saved',
+  saveStatusWasShown: false,
   hasUnsavedChanges: false,
   notification: null,
 }
@@ -28,6 +30,7 @@ export const uiSlice = createSlice({
     },
     setSaveStatus: (state, action: PayloadAction<SaveStatus>) => {
       state.saveStatus = action.payload
+      state.saveStatusWasShown = true
     },
     setHasUnsavedChanges: (state, action: PayloadAction<boolean>) => {
       state.hasUnsavedChanges = action.payload
@@ -40,6 +43,7 @@ export const uiSlice = createSlice({
     builder
       .addCase(saveDocument.pending, (state) => {
         state.saveStatus = 'saving'
+        state.saveStatusWasShown = true
       })
       .addCase(saveDocument.fulfilled, (state) => {
         state.saveStatus = 'saved'
