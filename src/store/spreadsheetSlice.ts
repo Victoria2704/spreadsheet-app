@@ -2,6 +2,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import type {
   CellData,
   CellPosition,
+  CellStyle,
   SelectedRange,
   SpreadsheetSnapshot,
 } from '@/types'
@@ -12,6 +13,7 @@ import {
   deleteColumnFromCells,
   deleteIndexFromObject,
   deleteRowFromCells,
+  mergeCellStyle,
 } from '@/tableHelpers'
 
 export interface SpreadsheetState {
@@ -101,6 +103,40 @@ export const spreadsheetSlice = createSlice({
       const { id, data } = action.payload
       state.cellValues[id] = data
     },
+    setManyCells: (
+      state,
+      action: PayloadAction<Record<string, CellData | undefined>>,
+    ) => {
+      rememberState(state)
+
+      Object.entries(action.payload).forEach(([id, data]) => {
+        if (data) {
+          state.cellValues[id] = data
+        } else {
+          delete state.cellValues[id]
+        }
+      })
+    },
+    setCellStyle: (
+      state,
+      action: PayloadAction<{ ids: string[]; style: Partial<CellStyle> }>,
+    ) => {
+      rememberState(state)
+
+      action.payload.ids.forEach((id) => {
+        state.cellValues[id] = mergeCellStyle(
+          state.cellValues[id],
+          action.payload.style,
+        )
+      })
+    },
+    clearCells: (state, action: PayloadAction<string[]>) => {
+      rememberState(state)
+
+      action.payload.forEach((id) => {
+        delete state.cellValues[id]
+      })
+    },
     setColumnWidth: (
       state,
       action: PayloadAction<{ index: number; width: number }>,
@@ -182,6 +218,9 @@ export const {
   setActiveCell,
   setSelectedRange,
   setCellValue,
+  setManyCells,
+  setCellStyle,
+  clearCells,
   setColumnWidth,
   setRowHeight,
   addRow,

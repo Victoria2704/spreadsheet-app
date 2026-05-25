@@ -26,6 +26,11 @@ type RegisterPayload = {
   password: string
 }
 
+type ChangePasswordPayload = {
+  oldPassword: string
+  newPassword: string
+}
+
 const REFRESH_TOKEN_KEY = 'spreadsheet-refresh-token'
 const ACCOUNTS_KEY = 'spreadsheet-accounts'
 let tokenNumber = 0
@@ -188,14 +193,49 @@ export const authSlice = createSlice({
       state.accessTokenExpiresAt = null
       state.error = null
     },
+    updateUserName: (state, action: PayloadAction<string>) => {
+      if (!state.user) {
+        return
+      }
+
+      state.user.name = action.payload
+
+      const account = state.accounts.find((item) => item.id === state.user?.id)
+
+      if (account) {
+        account.name = action.payload
+      }
+    },
+    changePassword: (state, action: PayloadAction<ChangePasswordPayload>) => {
+      if (!state.user) {
+        return
+      }
+
+      const account = state.accounts.find((item) => item.id === state.user?.id)
+
+      if (!account || account.password !== action.payload.oldPassword) {
+        state.error = 'Старый пароль неверный'
+        return
+      }
+
+      account.password = action.payload.newPassword
+      state.error = null
+    },
     clearAuthError: (state) => {
       state.error = null
     },
   },
 })
 
-export const { login, register, refreshAccessToken, logout, clearAuthError } =
-  authSlice.actions
+export const {
+  login,
+  register,
+  refreshAccessToken,
+  logout,
+  updateUserName,
+  changePassword,
+  clearAuthError,
+} = authSlice.actions
 export { ACCOUNTS_KEY, REFRESH_TOKEN_KEY }
 
 export default authSlice.reducer

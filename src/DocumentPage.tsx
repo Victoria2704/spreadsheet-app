@@ -16,11 +16,14 @@ import {
   loadDocument,
   redo,
   setActiveCell,
+  setCellStyle,
   setCellValue,
   setColumnWidth,
+  setManyCells,
   setRowHeight,
   setSelectedRange,
   undo,
+  clearCells,
 } from '@/store/spreadsheetSlice'
 import { saveDocument } from '@/store/documentsSlice'
 import {
@@ -41,6 +44,12 @@ const ROWS_BUFFER = 6
 type DocumentPageProps = {
   document: DocumentMeta
   onBack: () => void
+}
+
+type CopiedCell = {
+  row: number
+  column: number
+  data: CellData
 }
 
 function DocumentPage({ document, onBack }: DocumentPageProps) {
@@ -67,6 +76,7 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [tableHeight, setTableHeight] = useState(600)
+  const [copiedCells, setCopiedCells] = useState<CopiedCell[]>([])
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
   const loadedDocumentId = useRef<string | null>(null)
 
@@ -114,6 +124,7 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
         [cellId]: {
           value: newValue,
           type: getCellType(newValue),
+          style: cellValues[cellId]?.style,
         },
       }
 
@@ -131,6 +142,126 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     [cellValues, dispatch, editingCell],
   )
 
+  const getSelectedCellIds = useCallback(() => {
+    if (!selectedRange && activeCell) {
+      return [getCellId(activeCell.row, activeCell.column)]
+    }
+
+    if (!selectedRange) {
+      return []
+    }
+
+    const ids: string[] = []
+    const startRow = Math.min(selectedRange.start.row, selectedRange.end.row)
+    const endRow = Math.max(selectedRange.start.row, selectedRange.end.row)
+    const startColumn = Math.min(
+      selectedRange.start.column,
+      selectedRange.end.column,
+    )
+    const endColumn = Math.max(
+      selectedRange.start.column,
+      selectedRange.end.column,
+    )
+
+    for (let row = startRow; row <= endRow; row += 1) {
+      for (let column = startColumn; column <= endColumn; column += 1) {
+        ids.push(getCellId(row, column))
+      }
+    }
+
+    return ids
+  }, [activeCell, selectedRange])
+
+  const changeStyle = useCallback(
+    (style: Partial<NonNullable<CellData['style']>>) => {
+      const ids = getSelectedCellIds()
+
+      if (ids.length > 0) {
+        dispatch(setCellStyle({ ids, style }))
+      }
+    },
+    [dispatch, getSelectedCellIds],
+  )
+
+  const copySelectedCells = useCallback(
+    (shouldCut: boolean) => {
+      if (!selectedRange && !activeCell) {
+        return
+      }
+
+      const start = selectedRange?.start ?? activeCell
+
+      if (!start) {
+        return
+      }
+
+      const cells: CopiedCell[] = []
+      const idsForCut: string[] = []
+
+      getSelectedCellIds().forEach((id) => {
+        const [rowText, columnText] = id.split('-')
+        const row = Number(rowText)
+        const column = Number(columnText)
+        const data = cellValues[id]
+
+        if (data) {
+          cells.push({
+            row: row - start.row,
+            column: column - start.column,
+            data,
+          })
+          idsForCut.push(id)
+        }
+      })
+
+      setCopiedCells(cells)
+
+      if (shouldCut && idsForCut.length > 0) {
+        dispatch(clearCells(idsForCut))
+      }
+    },
+    [activeCell, cellValues, dispatch, getSelectedCellIds, selectedRange],
+  )
+
+  const pasteCopiedCells = useCallback(() => {
+    if (!activeCell || copiedCells.length === 0) {
+      return
+    }
+
+    const nextValues: Record<string, CellData> = {}
+
+    copiedCells.forEach((cell) => {
+      const row = activeCell.row + cell.row
+      const column = activeCell.column + cell.column
+
+      if (row >= 1 && column >= 0) {
+        nextValues[getCellId(row, column)] = cell.data
+      }
+    })
+
+    dispatch(setManyCells(nextValues))
+  }, [activeCell, copiedCells, dispatch])
+
+  const moveActiveCell = useCallback(
+    (rowStep: number, columnStep: number) => {
+      if (!activeCell) {
+        return
+      }
+
+      const nextCell = {
+        row: Math.min(rowsCount, Math.max(1, activeCell.row + rowStep)),
+        column: Math.min(
+          columnsCount - 1,
+          Math.max(0, activeCell.column + columnStep),
+        ),
+      }
+
+      dispatch(setActiveCell(nextCell))
+      dispatch(setSelectedRange({ start: nextCell, end: nextCell }))
+    },
+    [activeCell, columnsCount, dispatch, rowsCount],
+  )
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
@@ -142,6 +273,67 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
         }
 
         saveDocumentNow(cellValues)
+        return
+      }
+
+      if (editingCell) {
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault()
+        const activeId = activeCell
+          ? getCellId(activeCell.row, activeCell.column)
+          : ''
+        changeStyle({ bold: !cellValues[activeId]?.style?.bold })
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'i') {
+        event.preventDefault()
+        const activeId = activeCell
+          ? getCellId(activeCell.row, activeCell.column)
+          : ''
+        changeStyle({ italic: !cellValues[activeId]?.style?.italic })
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'u') {
+        event.preventDefault()
+        const activeId = activeCell
+          ? getCellId(activeCell.row, activeCell.column)
+          : ''
+        changeStyle({ underline: !cellValues[activeId]?.style?.underline })
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
+        event.preventDefault()
+        copySelectedCells(false)
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'x') {
+        event.preventDefault()
+        copySelectedCells(true)
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
+        event.preventDefault()
+        pasteCopiedCells()
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+        event.preventDefault()
+        dispatch(setActiveCell({ row: 1, column: 0 }))
+        dispatch(
+          setSelectedRange({
+            start: { row: 1, column: 0 },
+            end: { row: rowsCount, column: columnsCount - 1 },
+          }),
+        )
         return
       }
 
@@ -162,7 +354,27 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
         return
       }
 
-      if (event.key !== 'Enter' || !activeCell || editingCell) {
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        dispatch(clearCells(getSelectedCellIds()))
+        return
+      }
+
+      if (event.key === 'Tab') {
+        event.preventDefault()
+        moveActiveCell(0, event.shiftKey ? -1 : 1)
+        return
+      }
+
+      if (event.key === 'Escape') {
+        dispatch(
+          setSelectedRange(
+            activeCell ? { start: activeCell, end: activeCell } : null,
+          ),
+        )
+        return
+      }
+
+      if (event.key !== 'Enter' || !activeCell) {
         return
       }
 
@@ -180,12 +392,21 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     }
   }, [
     activeCell,
+    changeStyle,
     cellValues,
+    columnsCount,
+    copiedCells,
+    copySelectedCells,
     dispatch,
     editingCell,
     editingValue,
+    getSelectedCellIds,
+    moveActiveCell,
+    pasteCopiedCells,
+    rowsCount,
     saveDocumentNow,
     saveEditing,
+    selectedRange,
   ])
 
   useEffect(() => {
@@ -354,6 +575,14 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     }
 
     return cellValues[cellId]?.value ?? ''
+  }
+
+  function getActiveCellStyle() {
+    if (!activeCell) {
+      return {}
+    }
+
+    return cellValues[getCellId(activeCell.row, activeCell.column)]?.style ?? {}
   }
 
   function startColumnResize(event: ReactMouseEvent, column: number) {
@@ -578,6 +807,80 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
         </div>
       </header>
 
+      <div className="toolbar">
+        <button
+          type="button"
+          onClick={() => changeStyle({ bold: !getActiveCellStyle().bold })}
+        >
+          B
+        </button>
+        <button
+          type="button"
+          onClick={() => changeStyle({ italic: !getActiveCellStyle().italic })}
+        >
+          I
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            changeStyle({ underline: !getActiveCellStyle().underline })
+          }
+        >
+          U
+        </button>
+
+        <label>
+          Фон
+          <input
+            type="color"
+            value={getActiveCellStyle().backgroundColor ?? '#ffffff'}
+            onChange={(event) =>
+              changeStyle({ backgroundColor: event.target.value })
+            }
+          />
+        </label>
+
+        <label>
+          Текст
+          <input
+            type="color"
+            value={getActiveCellStyle().textColor ?? '#000000'}
+            onChange={(event) => changeStyle({ textColor: event.target.value })}
+          />
+        </label>
+
+        <select
+          value={getActiveCellStyle().align ?? 'left'}
+          onChange={(event) =>
+            changeStyle({
+              align: event.target.value as NonNullable<
+                CellData['style']
+              >['align'],
+            })
+          }
+        >
+          <option value="left">Слева</option>
+          <option value="center">Центр</option>
+          <option value="right">Справа</option>
+        </select>
+
+        <select
+          value={getActiveCellStyle().numberFormat ?? 'normal'}
+          onChange={(event) =>
+            changeStyle({
+              numberFormat: event.target.value as NonNullable<
+                CellData['style']
+              >['numberFormat'],
+            })
+          }
+        >
+          <option value="normal">Обычное</option>
+          <option value="percent">Процент</option>
+          <option value="currency">Валюта</option>
+          <option value="date">Дата</option>
+        </select>
+      </div>
+
       <div className="formula-panel">
         <div className="active-cell-name">{getActiveCellName()}</div>
         <input
@@ -684,6 +987,7 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
                   {columns.map((column, columnIndex) => {
                     const cellId = getCellId(row, columnIndex)
                     const cellData = cellValues[cellId]
+                    const cellStyle = cellData?.style
 
                     return (
                       <div
@@ -700,6 +1004,14 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
                           minWidth: getColumnWidth(columnIndex),
                           height: getRowHeight(row),
                           flexShrink: 0,
+                          backgroundColor: cellStyle?.backgroundColor,
+                          color: cellStyle?.textColor,
+                          fontWeight: cellStyle?.bold ? 'bold' : undefined,
+                          fontStyle: cellStyle?.italic ? 'italic' : undefined,
+                          textDecoration: cellStyle?.underline
+                            ? 'underline'
+                            : undefined,
+                          textAlign: cellStyle?.align,
                         }}
                         onClick={(event) =>
                           handleCellClick(row, columnIndex, event.shiftKey)

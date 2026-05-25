@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import authReducer, {
+  changePassword,
   login,
   logout,
   refreshAccessToken,
   register,
+  updateUserName,
 } from '@/store/authSlice'
 
 describe('authSlice', () => {
@@ -80,5 +82,47 @@ describe('authSlice', () => {
 
     expect(state.user).toBeNull()
     expect(state.isAuthenticated).toBe(false)
+  })
+
+  it('меняет имя пользователя', () => {
+    let state = authReducer(
+      undefined,
+      login({
+        email: 'cuff84cuff@gmail.com',
+        password: '12345678',
+      }),
+    )
+
+    state = authReducer(state, updateUserName('Новое имя'))
+
+    expect(state.user?.name).toBe('Новое имя')
+  })
+
+  it('меняет пароль пользователя', () => {
+    let state = authReducer(
+      undefined,
+      login({
+        email: 'cuff84cuff@gmail.com',
+        password: '12345678',
+      }),
+    )
+
+    state = authReducer(
+      state,
+      changePassword({
+        oldPassword: '12345678',
+        newPassword: '87654321',
+      }),
+    )
+    state = authReducer(state, logout())
+    state = authReducer(
+      state,
+      login({
+        email: 'cuff84cuff@gmail.com',
+        password: '87654321',
+      }),
+    )
+
+    expect(state.isAuthenticated).toBe(true)
   })
 })

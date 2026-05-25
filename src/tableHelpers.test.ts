@@ -46,6 +46,18 @@ describe('tableHelpers', () => {
     expect(getCellText(cells['1-1'], cells)).toBe('4')
   })
 
+  it('не делает странную дату из обычного числа', () => {
+    const cells: Record<string, CellData> = {
+      '1-0': {
+        value: '12345',
+        type: 'number',
+        style: { numberFormat: 'date' },
+      },
+    }
+
+    expect(getCellText(cells['1-0'], cells)).toBe('12345')
+  })
+
   it('сериализует и читает CSV', () => {
     const cells: Record<string, CellData> = {
       '1-0': { value: 'Hello, world', type: 'string' },

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import spreadsheetReducer, {
+  clearCells,
   loadDocument,
   redo,
   setCellValue,
+  setCellStyle,
   undo,
 } from '@/store/spreadsheetSlice'
 
@@ -38,5 +40,32 @@ describe('spreadsheetSlice', () => {
 
     state = spreadsheetReducer(state, redo())
     expect(state.cellValues['1-0']?.value).toBe('10')
+  })
+
+  it('сохраняет стиль ячейки', () => {
+    const state = spreadsheetReducer(
+      undefined,
+      setCellStyle({
+        ids: ['1-0'],
+        style: { bold: true, backgroundColor: '#ff0000' },
+      }),
+    )
+
+    expect(state.cellValues['1-0']?.style?.bold).toBe(true)
+    expect(state.cellValues['1-0']?.style?.backgroundColor).toBe('#ff0000')
+  })
+
+  it('очищает ячейки', () => {
+    let state = spreadsheetReducer(
+      undefined,
+      setCellValue({
+        id: '1-0',
+        data: { value: '10', type: 'number' },
+      }),
+    )
+
+    state = spreadsheetReducer(state, clearCells(['1-0']))
+
+    expect(state.cellValues['1-0']).toBeUndefined()
   })
 })

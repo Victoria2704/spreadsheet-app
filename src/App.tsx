@@ -14,12 +14,14 @@ import Dashboard from '@/Dashboard'
 import DocumentPage from '@/DocumentPage'
 import {
   ACCOUNTS_KEY,
+  changePassword,
   clearAuthError,
   login,
   logout,
   refreshAccessToken,
   register,
   REFRESH_TOKEN_KEY,
+  updateUserName,
 } from '@/store/authSlice'
 import { DOCUMENTS_KEY, setActiveDocumentId } from '@/store/documentsSlice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
@@ -169,15 +171,48 @@ function ForbiddenPage() {
 }
 
 function ProfilePage() {
+  const dispatch = useAppDispatch()
   const user = useAppSelector((state) => state.auth.user)
+  const authError = useAppSelector((state) => state.auth.error)
   const documentsCount = useAppSelector(
     (state) =>
       state.documents.items.filter((document) => document.ownerId === user?.id)
         .length,
   )
+  const [name, setName] = useState(user?.name ?? '')
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [message, setMessage] = useState('')
 
   if (!user) {
     return null
+  }
+
+  function handleNameSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (name.trim().length < 2) {
+      setMessage('Введите имя')
+      return
+    }
+
+    dispatch(updateUserName(name.trim()))
+    setMessage('Имя сохранено')
+  }
+
+  function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    dispatch(clearAuthError())
+
+    if (newPassword.length < 8) {
+      setMessage('Новый пароль должен быть не короче 8 символов')
+      return
+    }
+
+    dispatch(changePassword({ oldPassword, newPassword }))
+    setOldPassword('')
+    setNewPassword('')
+    setMessage('Пароль изменён')
   }
 
   return (
@@ -189,6 +224,31 @@ function ProfilePage() {
       <p>
         Дата регистрации: {new Date(user.registeredAt).toLocaleDateString()}
       </p>
+
+      <form className="profile-form" onSubmit={handleNameSubmit}>
+        <h2>Изменить имя</h2>
+        <input value={name} onChange={(event) => setName(event.target.value)} />
+        <button type="submit">Сохранить имя</button>
+      </form>
+
+      <form className="profile-form" onSubmit={handlePasswordSubmit}>
+        <h2>Сменить пароль</h2>
+        <input
+          type="password"
+          placeholder="Старый пароль"
+          value={oldPassword}
+          onChange={(event) => setOldPassword(event.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Новый пароль"
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+        />
+        <button type="submit">Сохранить пароль</button>
+      </form>
+
+      {(message || authError) && <p>{authError || message}</p>}
     </main>
   )
 }

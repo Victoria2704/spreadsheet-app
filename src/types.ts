@@ -10,9 +10,24 @@ export type SelectedRange = {
 
 export type CellType = 'string' | 'number' | 'boolean' | 'formula'
 
+export type TextAlign = 'left' | 'center' | 'right'
+
+export type NumberFormat = 'normal' | 'percent' | 'currency' | 'date'
+
+export type CellStyle = {
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  backgroundColor?: string
+  textColor?: string
+  align?: TextAlign
+  numberFormat?: NumberFormat
+}
+
 export type CellData = {
   value: string
   type: CellType
+  style?: CellStyle
 }
 
 export type SpreadsheetSnapshot = {

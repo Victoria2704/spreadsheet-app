@@ -8,6 +8,9 @@ let autosaveTimer: ReturnType<typeof setTimeout> | undefined
 
 const actionsForSave = new Set([
   'spreadsheet/setCellValue',
+  'spreadsheet/setManyCells',
+  'spreadsheet/setCellStyle',
+  'spreadsheet/clearCells',
   'spreadsheet/setColumnWidth',
   'spreadsheet/setRowHeight',
   'spreadsheet/addRow',

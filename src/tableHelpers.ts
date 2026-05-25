@@ -1,4 +1,4 @@
-import type { CellData, CellType } from '@/types'
+import type { CellData, CellStyle, CellType } from '@/types'
 
 export function getCellId(row: number, column: number) {
   return `${row}-${column}`
@@ -303,7 +303,53 @@ export function getCellText(
     return calculateFormula(cellData.value, cellValues)
   }
 
+  const format = cellData.style?.numberFormat
+
+  if (!format || format === 'normal') {
+    return cellData.value
+  }
+
+  const number = Number(cellData.value)
+
+  if (Number.isNaN(number)) {
+    return cellData.value
+  }
+
+  if (format === 'percent') {
+    return `${number * 100}%`
+  }
+
+  if (format === 'currency') {
+    return `${number} ₽`
+  }
+
+  if (format === 'date') {
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(cellData.value)) {
+      return cellData.value
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cellData.value)) {
+      return new Date(cellData.value).toLocaleDateString('ru-RU')
+    }
+
+    return cellData.value
+  }
+
   return cellData.value
+}
+
+export function mergeCellStyle(
+  cellData: CellData | undefined,
+  style: Partial<CellStyle>,
+) {
+  return {
+    value: cellData?.value ?? '',
+    type: cellData?.type ?? 'string',
+    style: {
+      ...cellData?.style,
+      ...style,
+    },
+  }
 }
 
 export function buildPreview(cellValues: Record<string, CellData>) {
