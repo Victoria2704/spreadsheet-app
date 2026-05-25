@@ -64,8 +64,15 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
   const [scrollTop, setScrollTop] = useState(0)
   const [tableHeight, setTableHeight] = useState(600)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
+  const loadedDocumentId = useRef<string | null>(null)
 
   useEffect(() => {
+    if (loadedDocumentId.current === document.id) {
+      return
+    }
+
+    loadedDocumentId.current = document.id
+
     dispatch(
       loadDocument({
         rowsCount: document.rowsCount,
