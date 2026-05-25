@@ -15,6 +15,14 @@ export type CellData = {
   type: CellType
 }
 
+export type SpreadsheetSnapshot = {
+  rowsCount: number
+  columnsCount: number
+  cellValues: Record<string, CellData>
+  columnWidths: Record<number, number>
+  rowHeights: Record<number, number>
+}
+
 export type ContextMenu = {
   x: number
   y: number
@@ -32,4 +40,13 @@ export type DocumentMeta = {
   columnsCount: number
   preview: string[][]
   cells: Record<string, CellData>
+}
+
+export type SaveStatus = 'saved' | 'saving' | 'error'
+
+export type User = {
+  id: string
+  name: string
+  email: string
+  registeredAt: string
 }

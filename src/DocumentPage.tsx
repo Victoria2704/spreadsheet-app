@@ -6,7 +6,6 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react'
-import { patchDocument } from '@/api/documents'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   addColumn as addColumnAction,
@@ -14,14 +13,17 @@ import {
   deleteColumn as deleteColumnAction,
   deleteRow as deleteRowAction,
   loadDocument,
+  redo,
   setActiveCell,
   setCellValue,
   setColumnWidth,
   setRowHeight,
   setSelectedRange,
+  undo,
 } from '@/store/spreadsheetSlice'
-import { updateDocument } from '@/store/documentsSlice'
+import { saveDocument } from '@/store/documentsSlice'
 import {
+  buildPreview,
   getCellId,
   getCellText,
   getCellType,
@@ -40,23 +42,6 @@ type DocumentPageProps = {
   onBack: () => void
 }
 
-function buildPreview(cellValues: Record<string, CellData>) {
-  const preview: string[][] = []
-
-  for (let row = 1; row <= 3; row += 1) {
-    const previewRow: string[] = []
-
-    for (let column = 0; column < 3; column += 1) {
-      const cellId = getCellId(row, column)
-      previewRow.push(getCellText(cellValues[cellId], cellValues))
-    }
-
-    preview.push(previewRow)
-  }
-
-  return preview
-}
-
 function DocumentPage({ document, onBack }: DocumentPageProps) {
   const dispatch = useAppDispatch()
   const {
@@ -68,81 +53,47 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     columnWidths,
     rowHeights,
   } = useAppSelector((state) => state.spreadsheet)
+  const saveStatus = useAppSelector((state) => state.ui.saveStatus)
+  const hasUnsavedChanges = useAppSelector(
+    (state) => state.ui.hasUnsavedChanges,
+  )
 
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [tableHeight, setTableHeight] = useState(600)
-  const [saveVersion, setSaveVersion] = useState(0)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<
-    'idle' | 'saving' | 'saved' | 'error'
-  >('idle')
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
-  const currentDocumentRef = useRef(document)
-  const scheduledVersionRef = useRef(0)
 
   useEffect(() => {
-    currentDocumentRef.current = document
-  }, [document])
-
-  useEffect(() => {
-    const currentDocument = currentDocumentRef.current
-
     dispatch(
       loadDocument({
-        rowsCount: currentDocument.rowsCount,
-        columnsCount: currentDocument.columnsCount,
-        cellValues: currentDocument.cells,
+        rowsCount: document.rowsCount,
+        columnsCount: document.columnsCount,
+        cellValues: document.cells,
       }),
     )
-  }, [dispatch, document.id])
+  }, [dispatch, document])
 
-  const saveDocumentToApi = useCallback(
-    async (nextCellValues: Record<string, CellData>) => {
-      setSaveStatus('saving')
-
-      const currentDocument = currentDocumentRef.current
-      const updatedAt = new Date().toISOString()
-      const preview = buildPreview(nextCellValues)
-
-      const isSaved = await patchDocument(currentDocument.id, {
-        rowsCount,
-        columnsCount,
-        cells: nextCellValues,
-        preview,
-        updatedAt,
-      })
-
-      if (!isSaved) {
-        setSaveStatus('error')
-        setHasUnsavedChanges(true)
-        return false
-      }
-
+  const saveDocumentNow = useCallback(
+    (nextCellValues: Record<string, CellData>) => {
       dispatch(
-        updateDocument({
-          ...currentDocument,
+        saveDocument({
+          document,
           rowsCount,
           columnsCount,
           cells: nextCellValues,
-          preview,
-          updatedAt,
+          preview: buildPreview(nextCellValues),
         }),
       )
-      setSaveStatus('saved')
-      setHasUnsavedChanges(false)
-
-      return true
     },
-    [columnsCount, dispatch, rowsCount],
+    [columnsCount, dispatch, document, rowsCount],
   )
 
   const saveEditing = useCallback(
-    (newValue: string, saveImmediately = false) => {
+    (newValue: string) => {
       if (!editingCell) {
-        return
+        return cellValues
       }
 
       const cellId = getCellId(editingCell.row, editingCell.column)
@@ -162,17 +113,10 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
       )
       setEditingCell(null)
       setEditingValue('')
-      setHasUnsavedChanges(true)
 
-      if (saveImmediately) {
-        void saveDocumentToApi(nextCellValues)
-        return
-      }
-
-      setSaveVersion((current) => current + 1)
-      setSaveStatus('saving')
+      return nextCellValues
     },
-    [cellValues, dispatch, editingCell, saveDocumentToApi],
+    [cellValues, dispatch, editingCell],
   )
 
   useEffect(() => {
@@ -181,11 +125,28 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
         event.preventDefault()
 
         if (editingCell) {
-          saveEditing(editingValue, true)
+          saveDocumentNow(saveEditing(editingValue))
           return
         }
 
-        void saveDocumentToApi(cellValues)
+        saveDocumentNow(cellValues)
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+
+        if (event.shiftKey) {
+          dispatch(redo())
+        } else {
+          dispatch(undo())
+        }
+        return
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        dispatch(redo())
         return
       }
 
@@ -208,9 +169,10 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
   }, [
     activeCell,
     cellValues,
+    dispatch,
     editingCell,
     editingValue,
-    saveDocumentToApi,
+    saveDocumentNow,
     saveEditing,
   ])
 
@@ -252,22 +214,6 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
       setTableHeight(tableWrapperRef.current.clientHeight)
     }
   }, [])
-
-  useEffect(() => {
-    if (saveVersion === 0 || saveVersion === scheduledVersionRef.current) {
-      return
-    }
-
-    scheduledVersionRef.current = saveVersion
-
-    const timeoutId = window.setTimeout(() => {
-      void saveDocumentToApi(cellValues)
-    }, 500)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [saveVersion, cellValues, saveDocumentToApi])
 
   const columns = useMemo(
     () =>
@@ -414,9 +360,6 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     function stopResize() {
       window.removeEventListener('mousemove', resize)
       window.removeEventListener('mouseup', stopResize)
-      setHasUnsavedChanges(true)
-      setSaveVersion((current) => current + 1)
-      setSaveStatus('saving')
     }
 
     window.addEventListener('mousemove', resize)
@@ -439,9 +382,6 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     function stopResize() {
       window.removeEventListener('mousemove', resize)
       window.removeEventListener('mouseup', stopResize)
-      setHasUnsavedChanges(true)
-      setSaveVersion((current) => current + 1)
-      setSaveStatus('saving')
     }
 
     window.addEventListener('mousemove', resize)
@@ -477,9 +417,6 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     setContextMenu(null)
     dispatch(setActiveCell(null))
     dispatch(setSelectedRange(null))
-    setHasUnsavedChanges(true)
-    setSaveVersion((current) => current + 1)
-    setSaveStatus('saving')
   }
 
   function deleteRow(rowForDelete: number) {
@@ -491,9 +428,6 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     setContextMenu(null)
     dispatch(setActiveCell(null))
     dispatch(setSelectedRange(null))
-    setHasUnsavedChanges(true)
-    setSaveVersion((current) => current + 1)
-    setSaveStatus('saving')
   }
 
   function addColumn(columnForAdd: number) {
@@ -501,9 +435,6 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     setContextMenu(null)
     dispatch(setActiveCell(null))
     dispatch(setSelectedRange(null))
-    setHasUnsavedChanges(true)
-    setSaveVersion((current) => current + 1)
-    setSaveStatus('saving')
   }
 
   function deleteColumn(columnForDelete: number) {
@@ -515,9 +446,6 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
     setContextMenu(null)
     dispatch(setActiveCell(null))
     dispatch(setSelectedRange(null))
-    setHasUnsavedChanges(true)
-    setSaveVersion((current) => current + 1)
-    setSaveStatus('saving')
   }
 
   function handleCellClick(row: number, column: number, shiftKey: boolean) {

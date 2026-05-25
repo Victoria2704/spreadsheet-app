@@ -4,16 +4,12 @@ import {
   createDocument,
   createEmptyPreview,
   deleteDocument,
+  setActiveDocumentId,
   updateDocument,
 } from '@/store/documentsSlice'
+import { closeCreateModal, openCreateModal } from '@/store/uiSlice'
 import { getCellId, getCellType, parseCsvText } from '@/tableHelpers'
 import type { CellData, DocumentMeta } from '@/types'
-
-type DashboardProps = {
-  onOpenDocument: (documentId: string) => void
-}
-
-const CURRENT_USER_ID = 'user-1'
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('ru-RU')
@@ -36,12 +32,13 @@ function DocumentPreview({ document }: { document: DocumentMeta }) {
   )
 }
 
-function Dashboard({ onOpenDocument }: DashboardProps) {
+function Dashboard() {
   const dispatch = useAppDispatch()
+  const userId = useAppSelector((state) => state.auth.user.id)
+  const isCreateOpen = useAppSelector((state) => state.ui.isCreateModalOpen)
   const documents = useAppSelector((state) =>
-    state.documents.filter((document) => document.ownerId === CURRENT_USER_ID),
+    state.documents.items.filter((document) => document.ownerId === userId),
   )
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [title, setTitle] = useState('')
   const [rowsCount, setRowsCount] = useState(100)
@@ -51,12 +48,12 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
   )
   const [editingTitle, setEditingTitle] = useState('')
 
-  function openCreateModal() {
-    setIsCreateOpen(true)
+  function openModal() {
+    dispatch(openCreateModal())
   }
 
-  function closeCreateModal() {
-    setIsCreateOpen(false)
+  function closeModal() {
+    dispatch(closeCreateModal())
     setTitle('')
     setRowsCount(100)
     setColumnsCount(26)
@@ -102,7 +99,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
       createDocument({
         ...document,
         id: `doc-${Date.now()}`,
-        ownerId: CURRENT_USER_ID,
+        ownerId: userId,
         title: `Копия ${document.title}`,
         createdAt: now,
         updatedAt: now,
@@ -120,7 +117,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
     dispatch(
       createDocument({
         id: `doc-${Date.now()}`,
-        ownerId: CURRENT_USER_ID,
+        ownerId: userId,
         title: title.trim() || 'Новый документ',
         createdAt: now,
         updatedAt: now,
@@ -131,7 +128,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
       }),
     )
 
-    closeCreateModal()
+    closeModal()
   }
 
   function openImportPicker() {
@@ -179,7 +176,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
     dispatch(
       createDocument({
         id: importedDocumentId,
-        ownerId: CURRENT_USER_ID,
+        ownerId: userId,
         title: file.name.replace(/\.csv$/i, '') || 'Импортированный документ',
         createdAt: now,
         updatedAt: now,
@@ -191,7 +188,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
     )
 
     event.target.value = ''
-    onOpenDocument(importedDocumentId)
+    dispatch(setActiveDocumentId(importedDocumentId))
   }
 
   return (
@@ -213,11 +210,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
             >
               Импорт CSV
             </button>
-            <button
-              type="button"
-              className="create-button"
-              onClick={openCreateModal}
-            >
+            <button type="button" className="create-button" onClick={openModal}>
               Новый документ
             </button>
           </div>
@@ -268,7 +261,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
             <button
               type="button"
               className="secondary-button"
-              onClick={() => onOpenDocument(document.id)}
+              onClick={() => dispatch(setActiveDocumentId(document.id))}
             >
               Открыть
             </button>
@@ -304,7 +297,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
       </section>
 
       {isCreateOpen && (
-        <div className="modal-backdrop" onClick={closeCreateModal}>
+        <div className="modal-backdrop" onClick={closeModal}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2 className="modal-title">Новый документ</h2>
 
@@ -349,7 +342,7 @@ function Dashboard({ onOpenDocument }: DashboardProps) {
                 <button
                   type="button"
                   className="secondary-button"
-                  onClick={closeCreateModal}
+                  onClick={closeModal}
                 >
                   Отмена
                 </button>

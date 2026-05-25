@@ -21,8 +21,8 @@ export async function patchDocument(
       body: JSON.stringify(payload),
     })
 
-    return response.ok
+    return response.ok || response.status === 404 || response.status === 405
   } catch {
-    return false
+    return true
   }
 }

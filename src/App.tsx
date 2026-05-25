@@ -1,12 +1,15 @@
-import { useState } from 'react'
 import Dashboard from '@/Dashboard'
 import DocumentPage from '@/DocumentPage'
-import { useAppSelector } from '@/store/hooks'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { setActiveDocumentId } from '@/store/documentsSlice'
 
 function App() {
-  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null)
+  const dispatch = useAppDispatch()
+  const activeDocumentId = useAppSelector(
+    (state) => state.documents.activeDocumentId,
+  )
   const activeDocument = useAppSelector((state) =>
-    state.documents.find((document) => document.id === activeDocumentId),
+    state.documents.items.find((document) => document.id === activeDocumentId),
   )
 
   if (activeDocument) {
@@ -14,12 +17,12 @@ function App() {
       <DocumentPage
         key={activeDocument.id}
         document={activeDocument}
-        onBack={() => setActiveDocumentId(null)}
+        onBack={() => dispatch(setActiveDocumentId(null))}
       />
     )
   }
 
-  return <Dashboard onOpenDocument={setActiveDocumentId} />
+  return <Dashboard />
 }
 
 export default App

@@ -1,5 +1,10 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
-import type { CellData, CellPosition, SelectedRange } from '@/types'
+import type {
+  CellData,
+  CellPosition,
+  SelectedRange,
+  SpreadsheetSnapshot,
+} from '@/types'
 import {
   addColumnToCells,
   addIndexToObject,
@@ -17,6 +22,8 @@ export interface SpreadsheetState {
   cellValues: Record<string, CellData>
   columnWidths: Record<number, number>
   rowHeights: Record<number, number>
+  past: SpreadsheetSnapshot[]
+  future: SpreadsheetSnapshot[]
 }
 
 const initialState: SpreadsheetState = {
@@ -27,6 +34,35 @@ const initialState: SpreadsheetState = {
   cellValues: {},
   columnWidths: {},
   rowHeights: {},
+  past: [],
+  future: [],
+}
+
+function getSnapshot(state: SpreadsheetState): SpreadsheetSnapshot {
+  return {
+    rowsCount: state.rowsCount,
+    columnsCount: state.columnsCount,
+    cellValues: { ...state.cellValues },
+    columnWidths: { ...state.columnWidths },
+    rowHeights: { ...state.rowHeights },
+  }
+}
+
+function rememberState(state: SpreadsheetState) {
+  state.past.push(getSnapshot(state))
+  state.future = []
+
+  if (state.past.length > 30) {
+    state.past.shift()
+  }
+}
+
+function applySnapshot(state: SpreadsheetState, snapshot: SpreadsheetSnapshot) {
+  state.rowsCount = snapshot.rowsCount
+  state.columnsCount = snapshot.columnsCount
+  state.cellValues = snapshot.cellValues
+  state.columnWidths = snapshot.columnWidths
+  state.rowHeights = snapshot.rowHeights
 }
 
 export const spreadsheetSlice = createSlice({
@@ -48,6 +84,8 @@ export const spreadsheetSlice = createSlice({
       state.selectedRange = null
       state.columnWidths = {}
       state.rowHeights = {}
+      state.past = []
+      state.future = []
     },
     setActiveCell: (state, action: PayloadAction<CellPosition | null>) => {
       state.activeCell = action.payload
@@ -59,6 +97,7 @@ export const spreadsheetSlice = createSlice({
       state,
       action: PayloadAction<{ id: string; data: CellData }>,
     ) => {
+      rememberState(state)
       const { id, data } = action.payload
       state.cellValues[id] = data
     },
@@ -66,6 +105,7 @@ export const spreadsheetSlice = createSlice({
       state,
       action: PayloadAction<{ index: number; width: number }>,
     ) => {
+      rememberState(state)
       const { index, width } = action.payload
       state.columnWidths[index] = width
     },
@@ -73,16 +113,19 @@ export const spreadsheetSlice = createSlice({
       state,
       action: PayloadAction<{ index: number; height: number }>,
     ) => {
+      rememberState(state)
       const { index, height } = action.payload
       state.rowHeights[index] = height
     },
     addRow: (state, action: PayloadAction<number>) => {
+      rememberState(state)
       state.cellValues = addRowToCells(state.cellValues, action.payload)
       state.rowHeights = addIndexToObject(state.rowHeights, action.payload)
       state.rowsCount += 1
     },
     deleteRow: (state, action: PayloadAction<number>) => {
       if (state.rowsCount > 1) {
+        rememberState(state)
         state.cellValues = deleteRowFromCells(state.cellValues, action.payload)
         state.rowHeights = deleteIndexFromObject(
           state.rowHeights,
@@ -92,12 +135,14 @@ export const spreadsheetSlice = createSlice({
       }
     },
     addColumn: (state, action: PayloadAction<number>) => {
+      rememberState(state)
       state.cellValues = addColumnToCells(state.cellValues, action.payload)
       state.columnWidths = addIndexToObject(state.columnWidths, action.payload)
       state.columnsCount += 1
     },
     deleteColumn: (state, action: PayloadAction<number>) => {
       if (state.columnsCount > 1) {
+        rememberState(state)
         state.cellValues = deleteColumnFromCells(
           state.cellValues,
           action.payload,
@@ -108,6 +153,26 @@ export const spreadsheetSlice = createSlice({
         )
         state.columnsCount -= 1
       }
+    },
+    undo: (state) => {
+      const previous = state.past.pop()
+
+      if (!previous) {
+        return
+      }
+
+      state.future.push(getSnapshot(state))
+      applySnapshot(state, previous)
+    },
+    redo: (state) => {
+      const next = state.future.pop()
+
+      if (!next) {
+        return
+      }
+
+      state.past.push(getSnapshot(state))
+      applySnapshot(state, next)
     },
   },
 })
@@ -123,6 +188,8 @@ export const {
   deleteRow,
   addColumn,
   deleteColumn,
+  undo,
+  redo,
 } = spreadsheetSlice.actions
 
 export default spreadsheetSlice.reducer

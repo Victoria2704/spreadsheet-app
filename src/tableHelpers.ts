@@ -300,6 +300,23 @@ export function getCellText(
   return cellData.value
 }
 
+export function buildPreview(cellValues: Record<string, CellData>) {
+  const preview: string[][] = []
+
+  for (let row = 1; row <= 3; row += 1) {
+    const previewRow: string[] = []
+
+    for (let column = 0; column < 3; column += 1) {
+      const cellId = getCellId(row, column)
+      previewRow.push(getCellText(cellValues[cellId], cellValues))
+    }
+
+    preview.push(previewRow)
+  }
+
+  return preview
+}
+
 export function addRowToCells(
   currentValues: Record<string, CellData>,
   rowForAdd: number,
