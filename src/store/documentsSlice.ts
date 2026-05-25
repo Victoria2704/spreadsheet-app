@@ -7,6 +7,7 @@ import { patchDocument } from '@/api/documents'
 import type { CellData, DocumentMeta } from '@/types'
 
 type LoadingStatus = 'idle' | 'loading' | 'success' | 'error'
+const DOCUMENTS_KEY = 'spreadsheet-documents'
 
 export type DocumentsState = {
   items: DocumentMeta[]
@@ -76,6 +77,12 @@ const studyPreview = [
   ['Git', 'CI', 'Tests'],
 ]
 
+const foreignPreview = [
+  ['Чужой', 'Документ', ''],
+  ['', '', ''],
+  ['', '', ''],
+]
+
 const mockDocuments: DocumentMeta[] = [
   {
     id: 'doc-1',
@@ -110,10 +117,43 @@ const mockDocuments: DocumentMeta[] = [
     preview: studyPreview,
     cells: createCellsFromPreview(studyPreview),
   },
+  {
+    id: 'doc-4',
+    ownerId: 'user-2',
+    title: 'Чужой документ',
+    createdAt: '2026-05-20T14:00:00.000Z',
+    updatedAt: '2026-05-22T17:10:00.000Z',
+    rowsCount: 100,
+    columnsCount: 26,
+    preview: foreignPreview,
+    cells: createCellsFromPreview(foreignPreview),
+  },
 ]
 
+function getSavedDocuments(defaultDocuments: DocumentMeta[]) {
+  try {
+    const text = localStorage.getItem(DOCUMENTS_KEY)
+
+    if (!text) {
+      return defaultDocuments
+    }
+
+    const savedDocuments = JSON.parse(text) as DocumentMeta[]
+    const savedIds = savedDocuments.map((document) => document.id)
+    const missingDefaultDocuments = defaultDocuments.filter(
+      (document) => !savedIds.includes(document.id),
+    )
+
+    return [...savedDocuments, ...missingDefaultDocuments]
+  } catch {
+    return defaultDocuments
+  }
+}
+
+const initialDocuments = getSavedDocuments(mockDocuments)
+
 const initialState: DocumentsState = {
-  items: mockDocuments,
+  items: initialDocuments,
   activeDocumentId: null,
   loadingStatus: 'idle',
   error: null,
@@ -122,14 +162,16 @@ const initialState: DocumentsState = {
 export const loadDocuments = createAsyncThunk(
   'documents/loadDocuments',
   async (userId: string) => {
-    return mockDocuments.filter((document) => document.ownerId === userId)
+    return initialDocuments.filter((document) => document.ownerId === userId)
   },
 )
 
 export const loadDocument = createAsyncThunk(
   'documents/loadDocument',
   async (documentId: string) => {
-    return mockDocuments.find((document) => document.id === documentId) ?? null
+    return (
+      initialDocuments.find((document) => document.id === documentId) ?? null
+    )
   },
 )
 
@@ -234,5 +276,6 @@ export const {
   updateDocument,
   deleteDocument,
 } = documentsSlice.actions
+export { DOCUMENTS_KEY }
 
 export default documentsSlice.reducer

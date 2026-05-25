@@ -36,7 +36,7 @@ function DocumentPreview({ document }: { document: DocumentMeta }) {
 function Dashboard() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const userId = useAppSelector((state) => state.auth.user.id)
+  const userId = useAppSelector((state) => state.auth.user?.id)
   const isCreateOpen = useAppSelector((state) => state.ui.isCreateModalOpen)
   const documents = useAppSelector((state) =>
     state.documents.items.filter((document) => document.ownerId === userId),
@@ -95,6 +95,10 @@ function Dashboard() {
   }
 
   function handleDuplicateDocument(document: DocumentMeta) {
+    if (!userId) {
+      return
+    }
+
     const now = new Date().toISOString()
 
     dispatch(
@@ -113,6 +117,10 @@ function Dashboard() {
 
   function handleCreateDocument(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (!userId) {
+      return
+    }
 
     const now = new Date().toISOString()
 
@@ -174,6 +182,10 @@ function Dashboard() {
     })
 
     const importedDocumentId = `doc-${Date.now()}`
+
+    if (!userId) {
+      return
+    }
 
     dispatch(
       createDocument({
