@@ -47,7 +47,6 @@ export const uiSlice = createSlice({
       })
       .addCase(saveDocument.fulfilled, (state) => {
         state.saveStatus = 'saved'
-        state.hasUnsavedChanges = false
       })
       .addCase(saveDocument.rejected, (state) => {
         state.saveStatus = 'error'

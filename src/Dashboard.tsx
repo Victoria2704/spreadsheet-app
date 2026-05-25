@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   createDocument,
@@ -34,6 +35,7 @@ function DocumentPreview({ document }: { document: DocumentMeta }) {
 
 function Dashboard() {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const userId = useAppSelector((state) => state.auth.user.id)
   const isCreateOpen = useAppSelector((state) => state.ui.isCreateModalOpen)
   const documents = useAppSelector((state) =>
@@ -189,6 +191,7 @@ function Dashboard() {
 
     event.target.value = ''
     dispatch(setActiveDocumentId(importedDocumentId))
+    navigate(`/documents/${importedDocumentId}`)
   }
 
   return (
@@ -257,7 +260,10 @@ function Dashboard() {
             <button
               type="button"
               className="secondary-button"
-              onClick={() => dispatch(setActiveDocumentId(document.id))}
+              onClick={() => {
+                dispatch(setActiveDocumentId(document.id))
+                navigate(`/documents/${document.id}`)
+              }}
             >
               Открыть
             </button>

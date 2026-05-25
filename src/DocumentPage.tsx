@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { setHasUnsavedChanges } from '@/store/uiSlice'
 import {
   addColumn as addColumnAction,
   addRow as addRowAction,
@@ -96,6 +97,7 @@ function DocumentPage({ document, onBack }: DocumentPageProps) {
           preview: buildPreview(nextCellValues),
         }),
       )
+      dispatch(setHasUnsavedChanges(false))
     },
     [columnsCount, dispatch, document, rowsCount],
   )

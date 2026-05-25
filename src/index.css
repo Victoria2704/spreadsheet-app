@@ -26,6 +26,52 @@ input {
   font: inherit;
 }
 
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid #999;
+  background: white;
+}
+
+.app-body {
+  display: flex;
+  min-height: calc(100vh - 40px);
+}
+
+.app-sidebar {
+  width: 170px;
+  padding: 14px;
+  border-right: 1px solid #999;
+  background: #eeeeee;
+}
+
+.app-sidebar a {
+  display: block;
+  margin-bottom: 10px;
+  color: #111;
+}
+
+.app-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.breadcrumbs {
+  padding: 10px 20px 0;
+  font-size: 14px;
+}
+
+.breadcrumbs a {
+  color: #004a99;
+}
+
+.simple-page {
+  padding: 20px;
+}
+
 .dashboard-page,
 .document-page {
   padding: 20px;

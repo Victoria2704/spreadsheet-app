@@ -39,6 +39,43 @@ export function createEmptyPreview() {
   return preview
 }
 
+function createCellsFromPreview(preview: string[][]) {
+  const cells: Record<string, CellData> = {}
+
+  preview.forEach((row, rowIndex) => {
+    row.forEach((value, columnIndex) => {
+      if (value.trim() === '') {
+        return
+      }
+
+      cells[`${rowIndex + 1}-${columnIndex}`] = {
+        value,
+        type: 'string',
+      }
+    })
+  })
+
+  return cells
+}
+
+const shoppingPreview = [
+  ['Молоко', 'Хлеб', 'Яйца'],
+  ['Сыр', 'Чай', 'Сахар'],
+  ['Рис', 'Соль', 'Кофе'],
+]
+
+const budgetPreview = [
+  ['Доход', '120000', ''],
+  ['Аренда', '35000', ''],
+  ['Еда', '18000', ''],
+]
+
+const studyPreview = [
+  ['React', 'Redux', 'Router'],
+  ['HTML', 'CSS', 'TS'],
+  ['Git', 'CI', 'Tests'],
+]
+
 const mockDocuments: DocumentMeta[] = [
   {
     id: 'doc-1',
@@ -48,12 +85,8 @@ const mockDocuments: DocumentMeta[] = [
     updatedAt: '2026-05-21T12:30:00.000Z',
     rowsCount: 100,
     columnsCount: 26,
-    preview: [
-      ['Молоко', 'Хлеб', 'Яйца'],
-      ['Сыр', 'Чай', 'Сахар'],
-      ['Рис', 'Соль', 'Кофе'],
-    ],
-    cells: {},
+    preview: shoppingPreview,
+    cells: createCellsFromPreview(shoppingPreview),
   },
   {
     id: 'doc-2',
@@ -63,12 +96,8 @@ const mockDocuments: DocumentMeta[] = [
     updatedAt: '2026-05-22T09:45:00.000Z',
     rowsCount: 100,
     columnsCount: 26,
-    preview: [
-      ['Доход', '120000', ''],
-      ['Аренда', '35000', ''],
-      ['Еда', '18000', ''],
-    ],
-    cells: {},
+    preview: budgetPreview,
+    cells: createCellsFromPreview(budgetPreview),
   },
   {
     id: 'doc-3',
@@ -78,12 +107,8 @@ const mockDocuments: DocumentMeta[] = [
     updatedAt: '2026-05-22T17:10:00.000Z',
     rowsCount: 100,
     columnsCount: 26,
-    preview: [
-      ['React', 'Redux', 'Router'],
-      ['HTML', 'CSS', 'TS'],
-      ['Git', 'CI', 'Tests'],
-    ],
-    cells: {},
+    preview: studyPreview,
+    cells: createCellsFromPreview(studyPreview),
   },
 ]
 
